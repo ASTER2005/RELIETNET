@@ -1,12 +1,10 @@
-import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import { Handshake, Landmark, Truck } from "lucide-react";
-import { Splash } from "@/components/store-hydration";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { demoUserForRole, useReliefStore } from "@/lib/store";
 import {
   RESOURCE_LABEL,
   ROLE_LABEL,
@@ -52,16 +50,7 @@ const DEMOS: { id: string; name: string; meta: string }[] = [
 ];
 
 function LoginPage() {
-  const hydrated = useReliefStore((s) => s._hydrated);
-  const user = useReliefStore((s) => s.currentUser);
-  const fieldMode = useReliefStore((s) => s.fieldMode);
-  const toggleFieldMode = useReliefStore((s) => s.toggleFieldMode);
-  const loginAs = useReliefStore((s) => s.loginAs);
-  const signup = useReliefStore((s) => s.signup);
-  const requirements = useReliefStore((s) => s.requirements);
-  const transactions = useReliefStore((s) => s.transactions);
-  const navigate = useNavigate();
-
+  const [fieldMode, setFieldMode] = useState(false);
   const [role, setRole] = useState<Role | null>(null);
   const [name, setName] = useState("");
   const [orgName, setOrgName] = useState("");
@@ -70,42 +59,18 @@ function LoginPage() {
   const [contributionType, setContributionType] =
     useState<ResourceType>("food");
 
-  const stats = useMemo(() => {
-    const people = requirements.reduce((a, r) => a + r.peopleAffected, 0);
-    const critical = requirements.filter(
-      (r) => r.priority === "critical" && r.status !== "fulfilled",
-    ).length;
-    const active = transactions.filter(
-      (t) => t.stage !== "confirmed" && t.stage !== "pending",
-    ).length;
-    return { people, critical, active };
-  }, [requirements, transactions]);
-
-  if (!hydrated) return <Splash />;
-  if (user) return <Navigate to="/dashboard" />;
-
-  const enter = (userId: string) => {
-    loginAs(userId);
-    navigate({ to: "/dashboard" });
-  };
-
-  const enterDemo = (r: Role) => {
-    const demo = demoUserForRole(r);
-    if (demo) enter(demo.id);
-  };
-
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!role || !name.trim()) return;
-    signup({
-      name: name.trim(),
-      role,
-      orgName: role === "receiver" ? orgName : undefined,
-      location: role === "receiver" ? location : undefined,
-      region: role === "coordinator" ? region : undefined,
-      contributionType: role === "donor" ? contributionType : undefined,
-    });
-    navigate({ to: "/dashboard" });
+    alert(`Signed up as ${name} (${role})`);
+  };
+
+  const enter = (userId: string) => {
+    alert(`Logged in as demo user ${userId}`);
+  };
+
+  const enterDemo = (r: Role) => {
+    alert(`Using demo ${r}`);
   };
 
   return (
@@ -127,7 +92,7 @@ function LoginPage() {
           Field mode
           <Switch
             checked={fieldMode}
-            onCheckedChange={() => toggleFieldMode()}
+            onCheckedChange={setFieldMode}
             aria-label="Field mode"
           />
         </label>
@@ -146,9 +111,9 @@ function LoginPage() {
             Every packet leaves a trail.
           </p>
           <dl className="mt-10 grid grid-cols-3 gap-3">
-            <HeroStat k="People at risk" v={formatNumber(stats.people)} />
-            <HeroStat k="Critical posts" v={stats.critical} tone="critical" />
-            <HeroStat k="Active transfers" v={stats.active} />
+            <HeroStat k="People at risk" v={formatNumber(0)} />
+            <HeroStat k="Critical posts" v={0} tone="critical" />
+            <HeroStat k="Active transfers" v={0} />
           </dl>
           <ul className="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-[11px] font-medium tracking-wide uppercase">
             <Legend c="bg-critical" l="Critical" />

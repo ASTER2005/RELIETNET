@@ -1,6 +1,5 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
-import { StoreHydration } from "@/components/store-hydration";
 import { Toaster } from "sonner";
 import appCss from "../styles.css?url";
 
@@ -43,7 +42,6 @@ export const Route = createRootRoute({
       </head>
       <body>
         <PreviewHostBridge />
-        <StoreHydration />
         <Outlet />
         <Toaster
           position="bottom-center"
