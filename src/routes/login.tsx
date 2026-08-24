@@ -1,7 +1,5 @@
-import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { GROK_PROVIDERS, authEnabled, signIn, authClient } from "@/lib/auth/client";
-import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,26 +16,6 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const { user, isPending } = useCurrentUserState();
-
-  if (isPending) {
-    return (
-      <div className="flex min-h-dvh flex-col items-center justify-center bg-bg text-fg">
-        <span className="grid size-10 grid-cols-2 gap-1 animate-pulse" aria-hidden>
-          <span className="bg-fg" />
-          <span className="bg-fg" />
-          <span className="bg-fg" />
-          <span className="bg-accent" />
-        </span>
-        <p className="mt-4 text-xs font-semibold tracking-[0.2em]">RELIETNET</p>
-      </div>
-    );
-  }
-
-  if (user) {
-    return <Navigate to="/" />;
-  }
-
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password.trim()) {
@@ -50,45 +28,26 @@ function Login() {
     }
 
     setLoading(true);
-    try {
-      if (isSignUp) {
-        const { error } = await authClient.signUp.email({
-          email: email.trim(),
-          password,
-          name: name.trim(),
-        });
-        if (error) {
-          toast.error(error.message || "Failed to create account.");
-        } else {
-          toast.success("Account created successfully!");
-          navigate({ to: "/" });
-        }
-      } else {
-        const { error } = await authClient.signIn.email({
-          email: email.trim(),
-          password,
-        });
-        if (error) {
-          toast.error(error.message || "Invalid email or password.");
-        } else {
-          toast.success("Signed in successfully!");
-          navigate({ to: "/" });
-        }
-      }
-    } catch (err: any) {
-      toast.error(err?.message || "An unexpected error occurred.");
-    } finally {
-      setLoading(false);
+    // Simulate network delay
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    setLoading(false);
+
+    if (isSignUp) {
+      toast.success("Account created successfully!");
+    } else {
+      toast.success("Signed in successfully!");
     }
+    navigate({ to: "/" });
   };
 
   const handleOAuth = async (providerId: string) => {
-    try {
-      await signIn(providerId, { callbackURL: "/" });
-    } catch (err: any) {
-      toast.error(err?.message || "Sign-in failed");
-    }
+    toast.info(`OAuth sign-in clicked for ${providerId}`);
   };
+
+  const dummyProviders = [
+    { providerId: "google", label: "Google" },
+    { providerId: "github", label: "GitHub" },
+  ];
 
   return (
     <div className="min-h-dvh bg-bg text-fg flex flex-col justify-between">
@@ -120,25 +79,23 @@ function Login() {
           </div>
 
           {/* Social Sign In */}
-          {authEnabled && GROK_PROVIDERS.length > 0 && (
-            <div className="grid gap-2 mb-6">
-              {GROK_PROVIDERS.map((p) => (
-                <Button
-                  key={p.providerId}
-                  variant="outline"
-                  onClick={() => handleOAuth(p.providerId)}
-                  className="w-full flex justify-center items-center gap-2 cursor-pointer"
-                >
-                  Continue with {p.label}
-                </Button>
-              ))}
-              <div className="relative my-4 flex items-center">
-                <div className="flex-grow border-t border-border" />
-                <span className="mx-4 text-xs text-muted font-medium uppercase tracking-wider">Or email</span>
-                <div className="flex-grow border-t border-border" />
-              </div>
+          <div className="grid gap-2 mb-6">
+            {dummyProviders.map((p) => (
+              <Button
+                key={p.providerId}
+                variant="outline"
+                onClick={() => handleOAuth(p.providerId)}
+                className="w-full flex justify-center items-center gap-2 cursor-pointer"
+              >
+                Continue with {p.label}
+              </Button>
+            ))}
+            <div className="relative my-4 flex items-center">
+              <div className="flex-grow border-t border-border" />
+              <span className="mx-4 text-xs text-muted font-medium uppercase tracking-wider">Or email</span>
+              <div className="flex-grow border-t border-border" />
             </div>
-          )}
+          </div>
 
           {/* Email Form */}
           <form onSubmit={handleEmailSubmit} className="space-y-4">

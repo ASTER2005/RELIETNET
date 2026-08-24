@@ -1,5 +1,5 @@
 import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { Handshake, Landmark, Truck } from "lucide-react";
 import { Splash } from "@/components/store-hydration";
 import { Button } from "@/components/ui/button";
@@ -7,8 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { demoUserForRole, useReliefStore } from "@/lib/store";
-import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { authEnabled } from "@/lib/auth/client";
 import {
   RESOURCE_LABEL,
   ROLE_LABEL,
@@ -56,7 +54,6 @@ const DEMOS: { id: string; name: string; meta: string }[] = [
 function LoginPage() {
   const hydrated = useReliefStore((s) => s._hydrated);
   const user = useReliefStore((s) => s.currentUser);
-  const dbUsers = useReliefStore((s) => s.users);
   const fieldMode = useReliefStore((s) => s.fieldMode);
   const toggleFieldMode = useReliefStore((s) => s.toggleFieldMode);
   const loginAs = useReliefStore((s) => s.loginAs);
@@ -65,8 +62,6 @@ function LoginPage() {
   const transactions = useReliefStore((s) => s.transactions);
   const navigate = useNavigate();
 
-  const { user: authUser, isPending: authPending } = useCurrentUserState();
-
   const [role, setRole] = useState<Role | null>(null);
   const [name, setName] = useState("");
   const [orgName, setOrgName] = useState("");
@@ -74,24 +69,6 @@ function LoginPage() {
   const [region, setRegion] = useState("");
   const [contributionType, setContributionType] =
     useState<ResourceType>("food");
-
-  // Prefill profile name from Better Auth user session once loaded
-  useEffect(() => {
-    if (authEnabled && authUser && !name) {
-      setName(authUser.displayName || "");
-    }
-  }, [authUser, name]);
-
-  // Handle automatic routing to dashboard if profile exists
-  useEffect(() => {
-    if (authEnabled && authUser && !authPending) {
-      const profile = dbUsers.find((u) => u.id === authUser.id);
-      if (profile) {
-        loginAs(authUser.id);
-        navigate({ to: "/dashboard" });
-      }
-    }
-  }, [authEnabled, authUser, authPending, dbUsers, loginAs, navigate]);
 
   const stats = useMemo(() => {
     const people = requirements.reduce((a, r) => a + r.peopleAffected, 0);
@@ -104,8 +81,8 @@ function LoginPage() {
     return { people, critical, active };
   }, [requirements, transactions]);
 
-  if (!hydrated || (authEnabled && authPending)) return <Splash />;
-  if (!authEnabled && user) return <Navigate to="/dashboard" />;
+  if (!hydrated) return <Splash />;
+  if (user) return <Navigate to="/dashboard" />;
 
   const enter = (userId: string) => {
     loginAs(userId);
@@ -127,7 +104,7 @@ function LoginPage() {
       location: role === "receiver" ? location : undefined,
       region: role === "coordinator" ? region : undefined,
       contributionType: role === "donor" ? contributionType : undefined,
-    }, authEnabled && authUser ? authUser.id : undefined);
+    });
     navigate({ to: "/dashboard" });
   };
 
@@ -182,168 +159,143 @@ function LoginPage() {
         </section>
 
         <section className="rn-enter-2 rounded-xl bg-surface p-5 shadow-[var(--shadow-border)] sm:p-6">
-          {authEnabled && !authUser ? (
-            <div className="text-center py-8 flex flex-col justify-center min-h-[300px]">
-              <h2 className="text-xl font-bold tracking-tight">Access the Ledger</h2>
-              <p className="mt-3 text-sm text-muted max-w-sm mx-auto leading-relaxed">
-                Connect your identity to access requirements, register surplus, or initiate donations on the ReliefNet network.
-              </p>
-              <Button
-                type="button"
-                variant="primary"
-                onClick={() => navigate({ to: "/login" })}
-                className="w-full mt-8 flex justify-center items-center gap-2 cursor-pointer"
-              >
-                Connect Identity
-              </Button>
-            </div>
-          ) : (
-            <>
-              <h2 className="text-lg font-semibold tracking-tight">
-                {authEnabled ? "Complete your Profile" : "Enter the network"}
-              </h2>
-              <p className="mt-1 text-sm text-muted">
-                {authEnabled
-                  ? "Choose your network role and provide your operational details."
-                  : "Choose a role, or jump in with a seeded identity."}
-              </p>
-              <div className="mt-5 grid gap-2">
-                {ROLES.map((r) => {
-                  const Icon = r.icon;
-                  const on = role === r.id;
-                  return (
-                    <button
-                      key={r.id}
-                      type="button"
-                      onClick={() => setRole(r.id)}
+          <h2 className="text-lg font-semibold tracking-tight">
+            Enter the network
+          </h2>
+          <p className="mt-1 text-sm text-muted">
+            Choose a role, or jump in with a seeded identity.
+          </p>
+          <div className="mt-5 grid gap-2">
+            {ROLES.map((r) => {
+              const Icon = r.icon;
+              const on = role === r.id;
+              return (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => setRole(r.id)}
+                  className={cn(
+                    "flex min-h-14 items-center gap-3 rounded-lg px-3 text-left shadow-[var(--shadow-border)] transition-[box-shadow,background-color] duration-150",
+                    on ? "bg-fg text-bg" : "bg-bg hover:shadow-[var(--shadow-border-hover)]",
+                  )}
+                >
+                  <Icon className="size-4 shrink-0" />
+                  <span>
+                    <span className="block text-sm font-semibold">{r.title}</span>
+                    <span
                       className={cn(
-                        "flex min-h-14 items-center gap-3 rounded-lg px-3 text-left shadow-[var(--shadow-border)] transition-[box-shadow,background-color] duration-150",
-                        on ? "bg-fg text-bg" : "bg-bg hover:shadow-[var(--shadow-border-hover)]",
+                        "block text-xs",
+                        on ? "opacity-70" : "text-muted",
                       )}
                     >
-                      <Icon className="size-4 shrink-0" />
-                      <span>
-                        <span className="block text-sm font-semibold">{r.title}</span>
-                        <span
-                          className={cn(
-                            "block text-xs",
-                            on ? "opacity-70" : "text-muted",
-                          )}
-                        >
-                          {r.copy}
-                        </span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+                      {r.copy}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
-              {role ? (
-                <form className="mt-5 grid gap-3" onSubmit={submit}>
+          {role ? (
+            <form className="mt-5 grid gap-3" onSubmit={submit}>
+              <div className="grid gap-1.5">
+                <Label htmlFor="name">Name</Label>
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  placeholder="Your name"
+                />
+              </div>
+              {role === "receiver" ? (
+                <>
                   <div className="grid gap-1.5">
-                    <Label htmlFor="name">Name</Label>
+                    <Label htmlFor="org">Camp / organisation</Label>
                     <Input
-                      id="name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      id="org"
+                      value={orgName}
+                      onChange={(e) => setOrgName(e.target.value)}
                       required
-                      placeholder="Your name"
+                      placeholder="Camp Sundari"
                     />
                   </div>
-                  {role === "receiver" ? (
-                    <>
-                      <div className="grid gap-1.5">
-                        <Label htmlFor="org">Camp / organisation</Label>
-                        <Input
-                          id="org"
-                          value={orgName}
-                          onChange={(e) => setOrgName(e.target.value)}
-                          required
-                          placeholder="Camp Sundari"
-                        />
-                      </div>
-                      <div className="grid gap-1.5">
-                        <Label htmlFor="loc">Location</Label>
-                        <Input
-                          id="loc"
-                          value={location}
-                          onChange={(e) => setLocation(e.target.value)}
-                          required
-                          placeholder="East Bank"
-                        />
-                      </div>
-                    </>
-                  ) : null}
-                  {role === "donor" ? (
-                    <div className="grid gap-1.5">
-                      <Label htmlFor="pref">Preferred contribution</Label>
-                      <select
-                        id="pref"
-                        value={contributionType}
-                        onChange={(e) =>
-                          setContributionType(e.target.value as ResourceType)
-                        }
-                        className={selectClass}
-                      >
-                        {RESOURCES.map((k) => (
-                          <option key={k} value={k}>
-                            {RESOURCE_LABEL[k]}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : null}
-                  {role === "coordinator" ? (
-                    <div className="grid gap-1.5">
-                      <Label htmlFor="region">Assigned region</Label>
-                      <Input
-                        id="region"
-                        value={region}
-                        onChange={(e) => setRegion(e.target.value)}
-                        required
-                        placeholder="Kaveri Basin"
-                      />
-                    </div>
-                  ) : null}
-                  <Button type="submit" variant="primary" className="cursor-pointer">
-                    {authEnabled ? "Complete Registration" : `Create ${ROLE_LABEL[role].toLowerCase()} identity`}
-                  </Button>
-                  {!authEnabled && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => enterDemo(role)}
-                    >
-                      Use demo {ROLE_LABEL[role].toLowerCase()}
-                    </Button>
-                  )}
-                </form>
-              ) : (
-                <p className="mt-5 text-sm text-muted">Select a role to continue.</p>
-              )}
-
-              {!authEnabled && (
-                <div className="mt-6 border-t border-border pt-4">
-                  <p className="text-[11px] font-medium tracking-[0.16em] text-muted uppercase">
-                    Quick demo
-                  </p>
-                  <div className="mt-2 grid gap-2">
-                    {DEMOS.map((d) => (
-                      <button
-                        key={d.id}
-                        type="button"
-                        onClick={() => enter(d.id)}
-                        className="flex min-h-12 items-center justify-between rounded-lg bg-bg px-3 text-left shadow-[var(--shadow-border)] hover:shadow-[var(--shadow-border-hover)]"
-                      >
-                        <span className="text-sm font-medium">{d.name}</span>
-                        <span className="text-xs text-muted">{d.meta}</span>
-                      </button>
-                    ))}
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="loc">Location</Label>
+                    <Input
+                      id="loc"
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      required
+                      placeholder="East Bank"
+                    />
                   </div>
+                </>
+              ) : null}
+              {role === "donor" ? (
+                <div className="grid gap-1.5">
+                  <Label htmlFor="pref">Preferred contribution</Label>
+                  <select
+                    id="pref"
+                    value={contributionType}
+                    onChange={(e) =>
+                      setContributionType(e.target.value as ResourceType)
+                    }
+                    className={selectClass}
+                  >
+                    {RESOURCES.map((k) => (
+                      <option key={k} value={k}>
+                        {RESOURCE_LABEL[k]}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              )}
-            </>
+              ) : null}
+              {role === "coordinator" ? (
+                <div className="grid gap-1.5">
+                  <Label htmlFor="region">Assigned region</Label>
+                  <Input
+                    id="region"
+                    value={region}
+                    onChange={(e) => setRegion(e.target.value)}
+                    required
+                    placeholder="Kaveri Basin"
+                  />
+                </div>
+              ) : null}
+              <Button type="submit" variant="primary" className="cursor-pointer">
+                Create {ROLE_LABEL[role].toLowerCase()} identity
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => enterDemo(role)}
+              >
+                Use demo {ROLE_LABEL[role].toLowerCase()}
+              </Button>
+            </form>
+          ) : (
+            <p className="mt-5 text-sm text-muted">Select a role to continue.</p>
           )}
+
+          <div className="mt-6 border-t border-border pt-4">
+            <p className="text-[11px] font-medium tracking-[0.16em] text-muted uppercase">
+              Quick demo
+            </p>
+            <div className="mt-2 grid gap-2">
+              {DEMOS.map((d) => (
+                <button
+                  key={d.id}
+                  type="button"
+                  onClick={() => enter(d.id)}
+                  className="flex min-h-12 items-center justify-between rounded-lg bg-bg px-3 text-left shadow-[var(--shadow-border)] hover:shadow-[var(--shadow-border-hover)]"
+                >
+                  <span className="text-sm font-medium">{d.name}</span>
+                  <span className="text-xs text-muted">{d.meta}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </section>
       </div>
     </div>

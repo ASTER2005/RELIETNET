@@ -1,5 +1,4 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
-import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { StoreHydration } from "@/components/store-hydration";
 import { Toaster } from "sonner";
@@ -44,16 +43,14 @@ export const Route = createRootRoute({
       </head>
       <body>
         <PreviewHostBridge />
-        <AuthProvider>
-          <StoreHydration />
-          <Outlet />
-          <Toaster
-            position="bottom-center"
-            toastOptions={{
-              className: "font-sans !bg-surface !text-fg !border-border",
-            }}
-          />
-        </AuthProvider>
+        <StoreHydration />
+        <Outlet />
+        <Toaster
+          position="bottom-center"
+          toastOptions={{
+            className: "font-sans !bg-surface !text-fg !border-border",
+          }}
+        />
         <Scripts />
       </body>
     </html>

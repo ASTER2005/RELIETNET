@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getSql, type Sql } from "./db";
-import { authMiddleware } from "./auth/middleware";
 import {
   seedRequirements,
   seedSurplus,
@@ -70,7 +69,6 @@ async function seedDatabase(sql: Sql) {
 
 // Server function to load the entire state, seeding if the DB is empty
 export const fetchReliefData = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
   .handler(async () => {
     const sql = await getSql();
 
@@ -142,11 +140,7 @@ export const fetchReliefData = createServerFn({ method: "GET" })
 // Server function to persist a new user signup
 export const dbSignup = createServerFn({ method: "POST" })
   .validator((u: User) => u)
-  .middleware([authMiddleware])
-  .handler(async ({ data: u, context }) => {
-    if (u.id !== context.userId) {
-      throw new Error("Unauthorized profile creation");
-    }
+  .handler(async ({ data: u }) => {
     const sql = await getSql();
     await sql`
       INSERT INTO users (id, name, role, org_name, location, region, contribution_type)
@@ -158,11 +152,7 @@ export const dbSignup = createServerFn({ method: "POST" })
 // Server function to persist a new requirement
 export const dbPostRequirement = createServerFn({ method: "POST" })
   .validator((r: Requirement) => r)
-  .middleware([authMiddleware])
-  .handler(async ({ data: r, context }) => {
-    if (r.receiverId !== context.userId) {
-      throw new Error("Unauthorized requirement creation");
-    }
+  .handler(async ({ data: r }) => {
     const sql = await getSql();
     await sql`
       INSERT INTO requirements (
@@ -183,11 +173,7 @@ export const dbPostRequirement = createServerFn({ method: "POST" })
 // Server function to persist a new surplus item
 export const dbPostSurplus = createServerFn({ method: "POST" })
   .validator((s: SurplusItem) => s)
-  .middleware([authMiddleware])
-  .handler(async ({ data: s, context }) => {
-    if (s.receiverId !== context.userId) {
-      throw new Error("Unauthorized surplus creation");
-    }
+  .handler(async ({ data: s }) => {
     const sql = await getSql();
     await sql`
       INSERT INTO surplus (id, camp_name, receiver_id, resource_type, quantity, quantity_unit, location, map_x, map_y, notes, created_at, matched_to_requirement_id, status)
@@ -199,7 +185,6 @@ export const dbPostSurplus = createServerFn({ method: "POST" })
 // Server function to persist a transaction state update
 export const dbSaveTransaction = createServerFn({ method: "POST" })
   .validator((data: { tx: Transaction; requirement?: Requirement; surplus?: SurplusItem }) => data)
-  .middleware([authMiddleware])
   .handler(async ({ data }) => {
     const sql = await getSql();
     const t = data.tx;
@@ -259,7 +244,6 @@ export const dbSaveTransaction = createServerFn({ method: "POST" })
 
 // Server function to reset the database and re-seed it
 export const dbResetDemo = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
   .handler(async () => {
     const sql = await getSql();
     await sql`TRUNCATE TABLE users, requirements, surplus, transactions RESTART IDENTITY CASCADE`;
